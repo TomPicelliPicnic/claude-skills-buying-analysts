@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "nt-slides-check"
+version = "0.1.0"
+description = "Pre-flight audit for NT supplier deal review slides"
+authors = ["Picnic Team"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+gspread = "^6.2"
+google-auth-oauthlib = "^1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+audit = "audit:main"
