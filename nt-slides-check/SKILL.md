@@ -16,15 +16,15 @@ The skill **only makes changes in the Google Sheet** — never in Excel or Power
 
 **Step 1 — Clone the repo**
 ```bash
-git clone <repo_url> ~/skills/nt-slides-check
-cd ~/skills/nt-slides-check
+git clone <repo_url> ~/skills/picnic-claude-skills
+cd ~/skills/picnic-claude-skills
 ```
 
 **Step 2 — Run the setup script**
 ```bash
 chmod +x setup.sh && ./setup.sh
 ```
-This installs dependencies, creates the `~/.claude/skills/NT-slides-check` symlink, and checks that Google Sheets credentials are present. If credentials are missing, follow the auth instructions it prints.
+This installs dependencies for every skill in the repo, creates all `~/.claude/skills/` symlinks automatically, and checks that Google Sheets credentials are present. If credentials are missing, follow the auth instructions it prints.
 
 **Step 3 — Use the skill**
 
@@ -92,7 +92,7 @@ If no argument was provided, ask the user for the Google Sheet URL.
 
 Run with:
 ```bash
-cd ~/skills/nt-slides-check && poetry run python audit.py REPLACE_WITH_SHEET_ID
+cd ~/.claude/skills/NT-slides-check && poetry run python audit.py REPLACE_WITH_SHEET_ID
 ```
 
 The audit script (`audit.py`) auto-syncs via `git pull` before running, then dynamically loads all checks from `checks/`.
