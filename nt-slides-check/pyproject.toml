@@ -9,6 +9,7 @@ package-mode = false
 python = "^3.10"
 gspread = "^6.2"
 google-auth-oauthlib = "^1.0"
+appdirs = "^1.4.0"
 
 [build-system]
 requires = ["poetry-core"]
