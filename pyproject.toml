@@ -3,6 +3,7 @@ name = "nt-slides-check"
 version = "0.1.0"
 description = "Pre-flight audit for NT supplier deal review slides"
 authors = ["Picnic Team"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
