@@ -10,6 +10,77 @@ Run this before copying data to Excel and updating think-cell.
 
 The skill **only makes changes in the Google Sheet** — never in Excel or PowerPoint.
 
+---
+
+## Quick Start (for new teammates)
+
+**Step 1 — Clone the repo**
+```bash
+git clone <repo_url> ~/skills/nt-slides-check
+cd ~/skills/nt-slides-check
+```
+
+**Step 2 — Run the setup script**
+```bash
+chmod +x setup.sh && ./setup.sh
+```
+This installs dependencies, creates the `~/.claude/skills/NT-slides-check` symlink, and checks that Google Sheets credentials are present. If credentials are missing, follow the auth instructions it prints.
+
+**Step 3 — Use the skill**
+
+In Claude Code, type:
+```
+/NT-slides-check <google_sheet_url>
+```
+That's it. The skill pulls the latest checks from git automatically every time it runs.
+
+---
+
+## Contributor's Workflow
+
+The `checks/` folder is the plugin registry. Every `.py` file in it that subclasses `CheckTemplate` is automatically discovered and run. Adding a new check is a three-step loop:
+
+**1. Write your check**
+
+Create `checks/check_NN_your_name.py` (next unused integer for `NN`). Copy this minimal template:
+
+```python
+from typing import Optional
+from core.check_template import CheckTemplate, Finding, AuditContext
+
+class MyCheck(CheckTemplate):
+    id         = 21           # next unused integer — never reuse
+    name       = "My check"
+    sheet_name = "PPT time"   # tab this check concerns
+    severity   = "WARNING"    # "ERROR" or "WARNING"
+
+    def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
+        # dm.ppt_time, dm.tsv, dm.deal_sheet, etc. — all pre-fetched, no API calls
+        if some_condition:
+            return Finding("WARNING", "PPT time", "Describe the problem here.")
+        ctx.ok_count += 1
+        return None  # None = check passed
+```
+
+See `SKILL.md → Contributor Guide` (at the bottom) for the full reference including how to add an auto-fix.
+
+**2. Test it locally**
+```bash
+cd ~/skills/nt-slides-check
+poetry run python audit.py <any_sheet_id>
+```
+
+**3. Push — everyone gets it on their next run**
+```bash
+git add checks/check_21_my_name.py
+git commit -m "Add check 21: describe what it catches"
+git push
+```
+
+Because `audit.py` runs `git pull --ff-only` at startup, every colleague's next invocation will include your new check automatically — no setup required on their end.
+
+---
+
 ## Step 1: Get the sheet ID
 
 Arguments provided: `$ARGUMENTS`

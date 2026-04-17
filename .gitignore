@@ -1,7 +1,19 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
 .venv/
 dist/
 *.egg-info/
+
+# Environment variables
 .env
+.env.*
+
+# Google OAuth credentials — NEVER commit these
+authorized_user.json
+client_secrets.json
+credentials.json
+service_account.json
+*_credentials.json
+token.json
