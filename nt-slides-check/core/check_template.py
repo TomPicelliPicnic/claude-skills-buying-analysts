@@ -53,6 +53,7 @@ class CheckTemplate(ABC):
     sheet_name: str
     severity: str
     auto_fix: bool = False
+    auto_fix_message: str = ""  # Human-readable message shown in AUTO-FIXED section
 
     @abstractmethod
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:

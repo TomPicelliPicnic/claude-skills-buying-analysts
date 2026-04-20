@@ -149,7 +149,8 @@ def main():
             continue
         if check.auto_fix and result.fix_data is not None:
             check.fix(result.fix_data, auto_wq, dm)
-            ctx.auto_fixed.append(f"[{result.sheet}] {result.message}")
+            msg = check.auto_fix_message or result.message
+            ctx.auto_fixed.append(f"[{result.sheet}] {msg}")
         else:
             findings.append(result)
 
