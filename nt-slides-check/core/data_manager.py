@@ -12,7 +12,7 @@ class DataManager:
         # a 261-col sheet are the main latency driver; this is ~50× less data.
         _batch = self.sh.values_batch_get(
             ranges=[
-                "'Shelf analysis'!1:3",
+                "'Shelf analysis'!1:8",
                 "'PPT time'!A1:JA20",
                 "'TSV output'",
                 "'Price list'",
