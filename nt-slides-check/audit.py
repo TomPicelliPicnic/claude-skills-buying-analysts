@@ -116,11 +116,26 @@ def main():
                 print(f"Invalid --fix JSON: {e}")
                 sys.exit(1)
 
-    _sync()
-
     creds = get_credentials()
     gc    = gspread.authorize(creds)
     sh    = gc.open_by_key(sheet_id)
+
+    if fix_instructions:
+        # Fast path: skip sync and checks — just load data and apply fixes
+        dm     = DataManager(sh)
+        checks = load_checks()
+        check_map = {c.id: c for c in checks}
+        wq = WriteQueue()
+        for fix_id_str, fix_args in fix_instructions.items():
+            check = check_map.get(int(fix_id_str))
+            if check:
+                check.fix(fix_args, wq, dm)
+            else:
+                print(f"  Unknown fix ID: {fix_id_str}")
+        wq.dispatch(sh)
+        return
+
+    _sync()
 
     dm  = DataManager(sh)
     ctx = _build_context(sh, dm)
@@ -133,18 +148,6 @@ def main():
             findings.append(result)
 
     print_report(findings, ctx)
-
-    if fix_instructions:
-        # Build a map from check id → check instance for fix dispatch
-        check_map = {c.id: c for c in checks}
-        wq = WriteQueue()
-        for fix_id_str, fix_args in fix_instructions.items():
-            check = check_map.get(int(fix_id_str))
-            if check:
-                check.fix(fix_args, wq, dm)
-            else:
-                print(f"  Unknown fix ID: {fix_id_str}")
-        wq.dispatch(sh)
 
 
 if __name__ == "__main__":
