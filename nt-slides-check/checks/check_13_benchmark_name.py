@@ -32,7 +32,7 @@ def _find_benchmark_cell(offer_insights: list) -> tuple[str, str]:
 
 class BenchmarkNameCheck(CheckTemplate):
     id         = 13
-    name       = "PPT context benchmark name in B5"
+    name       = "PPT context benchmark label and name in A5/B5"
     sheet_name = "PPT context"
     severity   = "ERROR"
 
@@ -58,6 +58,8 @@ class BenchmarkNameCheck(CheckTemplate):
     def fix(self, fix_data: dict, wq, dm) -> None:
         cell_ref = fix_data.get("cell_ref")
         suggested = fix_data.get("suggested") or fix_data.get("value") or ""
+        wq.add_value("'PPT context'!A5", [["Benchmark"]])
+        print("  Queued: set PPT context A5 = 'Benchmark'.")
         if cell_ref:
             formula = f"='Offer insights'!{cell_ref}"
             wq.add_formula("'PPT context'!B5", [[formula]])
@@ -66,4 +68,4 @@ class BenchmarkNameCheck(CheckTemplate):
             wq.add_value("'PPT context'!B5", [[suggested]])
             print(f"  Queued: set PPT context B5 = '{suggested}' (static, no Benchmark header found).")
         else:
-            print("  Skipped: no cell reference or value available — set B5 manually.")
+            print("  Skipped B5: no cell reference or value available — set B5 manually.")
