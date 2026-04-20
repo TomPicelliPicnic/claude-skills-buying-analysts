@@ -38,6 +38,10 @@ class CheckTemplate(ABC):
         sheet_name str   — primary tab this check concerns
         severity   str   — max severity: "ERROR" or "WARNING"
 
+    Optional class attributes:
+        auto_fix   bool  — if True, fix() is called automatically during the audit
+                           when the check fails and fix_data is available
+
     Rules:
         - run() must never call the Sheets API — read only from dm.* and ctx.*
         - fix() must never call the API directly — queue via wq.add_value /
@@ -48,6 +52,7 @@ class CheckTemplate(ABC):
     name: str
     sheet_name: str
     severity: str
+    auto_fix: bool = False
 
     @abstractmethod
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:

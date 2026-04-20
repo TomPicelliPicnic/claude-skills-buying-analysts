@@ -142,10 +142,19 @@ def main():
 
     checks   = load_checks()
     findings = []
+    auto_wq  = WriteQueue()
     for check in checks:
         result = check.run(dm, ctx)
-        if result is not None:
+        if result is None:
+            continue
+        if check.auto_fix and result.fix_data is not None:
+            check.fix(result.fix_data, auto_wq, dm)
+            ctx.auto_fixed.append(f"[{result.sheet}] {result.message}")
+        else:
             findings.append(result)
+
+    if not auto_wq.is_empty:
+        auto_wq.dispatch(sh)
 
     print_report(findings, ctx)
 

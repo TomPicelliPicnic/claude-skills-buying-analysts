@@ -13,24 +13,27 @@ def _col_letter(col_0idx: int) -> str:
     return result
 
 
+def _find_brand_row(ppt_ctx: list) -> Optional[int]:
+    """Return 0-based row index of the row containing 'Brand' in col A, or None."""
+    for ri, row in enumerate(ppt_ctx):
+        if row and row[0].strip().lower() == "brand":
+            return ri
+    return None
+
+
 def _find_l2_l3_from_context(context: list) -> dict:
     """
     Locate 'Margin comparison: Brand in L2' anchor in Context tab and derive
-    cell references for B8/D8/F8 in PPT context.
+    cell references for the row above 'Brand' in PPT context.
 
     Returns dict with keys:
         b8_ref, d8_ref, f8_ref  — A1-notation Context refs (empty string if absent)
         b8_val, d8_val, f8_val  — display values for messages
         tool                    — 'old', 'new', or 'unknown'
 
-    Old tool layout:
-      Row after anchor contains 'L2' label at some col, chosen value to its right.
-      b8_ref → the 'L2' label cell, d8_ref → the value cell to its right.
-
-    New tool layout:
-      'Select: L2 or L3' label → value in next row same col → b8_ref
-      'Select: specific L2' label → value in next row same col → d8_ref
-      'Select: specific L3' label → value in next row same col → f8_ref
+    Old tool: 'L2' label + chosen value appear on the same row as 'Brand' in Context.
+    New tool: 'Select: L2 or L3', 'Select: specific L2', 'Select: specific L3' rows
+              each have their value in the row below the label.
     """
     anchor_ri = None
     for ri, row in enumerate(context):
@@ -77,18 +80,17 @@ def _find_l2_l3_from_context(context: list) -> dict:
         result["tool"] = "new"
         return result
 
-    # Old tool: find cell with value exactly 'L2'; chosen category is one col to the right
+    # Old tool: find the 'Brand' row in Context (col B = index 1), then read the L2
+    # label + chosen value that appear on that same row (cols 12 and 13).
     for ri in range(anchor_ri + 1, search_end):
         row = context[ri]
-        for ci, val in enumerate(row):
-            if val.strip() == "L2" and ci + 1 < len(row):
-                col = _col_letter(ci)
-                col_next = _col_letter(ci + 1)
-                sheet_row = ri + 1
-                result["b8_ref"] = f"Context!{col}{sheet_row}"
-                result["b8_val"] = "L2"
-                result["d8_ref"] = f"Context!{col_next}{sheet_row}"
-                result["d8_val"] = row[ci + 1].strip()
+        if len(row) > 1 and row[1].strip() == "Brand":
+            # 'L2' label is at col 12, chosen category at col 13 (on the Brand row)
+            if len(row) > 13:
+                result["b8_ref"] = f"Context!{_col_letter(12)}{ri + 1}"
+                result["b8_val"] = row[12].strip()
+                result["d8_ref"] = f"Context!{_col_letter(13)}{ri + 1}"
+                result["d8_val"] = row[13].strip()
                 result["tool"] = "old"
                 return result
 
@@ -97,30 +99,39 @@ def _find_l2_l3_from_context(context: list) -> dict:
 
 class L2L3CategoryCheck(CheckTemplate):
     id         = 23
-    name       = "L2/L3 category labels in PPT context A8:F8"
+    name       = "L2/L3 category labels in PPT context (row above Brand)"
     sheet_name = "PPT context"
     severity   = "ERROR"
+    auto_fix   = True
 
+    # Static labels expected in the row above 'Brand' — col indices 0, 2, 4
     _STATIC = {0: "L2 or L3", 2: "L2:", 4: "L3:"}
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         ppt_ctx = dm.ppt_ctx
-        row8 = ppt_ctx[7] if len(ppt_ctx) > 7 else []
+
+        brand_row_idx = _find_brand_row(ppt_ctx)
+        if brand_row_idx is None or brand_row_idx == 0:
+            ctx.ok_count += 1
+            return None  # No Brand header found — sheet type doesn't have this section
+
+        target_row_idx = brand_row_idx - 1
+        row_above = ppt_ctx[target_row_idx] if target_row_idx < len(ppt_ctx) else []
 
         def _cell(col):
-            return row8[col].strip() if col < len(row8) else ""
+            return row_above[col].strip() if col < len(row_above) else ""
 
         static_issues = []
         for col, expected in self._STATIC.items():
             actual = _cell(col)
             if actual != expected:
-                static_issues.append(f"{chr(65 + col)}8 should be '{expected}' (is '{actual}')")
+                static_issues.append(f"{chr(65 + col)}{brand_row_idx} should be '{expected}' (is '{actual}')")
 
         dynamic_issues = []
         if not _cell(1):
-            dynamic_issues.append("B8 (L2 or L3 selector) is empty")
+            dynamic_issues.append(f"B{brand_row_idx} (L2 or L3 selector) is empty")
         if not _cell(3):
-            dynamic_issues.append("D8 (specific L2 value) is empty")
+            dynamic_issues.append(f"D{brand_row_idx} (specific L2 value) is empty")
 
         all_issues = static_issues + dynamic_issues
         if not all_issues:
@@ -130,15 +141,16 @@ class L2L3CategoryCheck(CheckTemplate):
         ctx_info = _find_l2_l3_from_context(dm.context)
         fix_available = ctx_info is not None and ctx_info.get("tool") != "unknown"
 
+        # Include brand_row_idx in fix_data so fix() can target the right row dynamically
+        if fix_available:
+            ctx_info["brand_row_idx"] = brand_row_idx
+
         msg = (
-            f"PPT context row 8 (L2/L3 category) has {len(all_issues)} issue(s): "
+            f"PPT context row above Brand ({len(all_issues)} issue(s)): "
             + "; ".join(all_issues) + "."
         )
         if fix_available:
-            msg += (f" Suggested: B8='{ctx_info['b8_val']}', D8='{ctx_info['d8_val']}'"
-                    f" (tool: {ctx_info['tool']})")
-        else:
-            msg += " Set A8:F8 manually."
+            msg += f" Suggested: B={ctx_info['b8_val']}, D={ctx_info['d8_val']} (tool: {ctx_info['tool']})"
 
         return Finding(
             "ERROR", "PPT context", msg,
@@ -148,33 +160,36 @@ class L2L3CategoryCheck(CheckTemplate):
 
     def fix(self, fix_data: dict, wq, dm) -> None:
         tool = fix_data.get("tool", "unknown")
-        print(f"  Setting PPT context row 8 labels (tool: {tool}).")
+        # Row above Brand: brand_row_idx (0-based) == 1-based sheet row of the target row
+        brand_row_idx = fix_data.get("brand_row_idx", 8)
+        row = brand_row_idx  # 1-based sheet row for cell refs
 
-        wq.add_value("'PPT context'!A8", [["L2 or L3"]])
-        print("  Queued: A8 = 'L2 or L3'.")
-        wq.add_value("'PPT context'!C8", [["L2:"]])
-        print("  Queued: C8 = 'L2:'.")
-        wq.add_value("'PPT context'!E8", [["L3:"]])
-        print("  Queued: E8 = 'L3:'.")
+        print(f"  Setting PPT context row {row} labels (row above Brand, tool: {tool}).")
+        wq.add_value(f"'PPT context'!A{row}", [["L2 or L3"]])
+        print(f"  Queued: A{row} = 'L2 or L3'.")
+        wq.add_value(f"'PPT context'!C{row}", [["L2:"]])
+        print(f"  Queued: C{row} = 'L2:'.")
+        wq.add_value(f"'PPT context'!E{row}", [["L3:"]])
+        print(f"  Queued: E{row} = 'L3:'.")
 
         b8_ref = fix_data.get("b8_ref") or ""
         d8_ref = fix_data.get("d8_ref") or ""
         f8_ref = fix_data.get("f8_ref") or ""
 
         if b8_ref:
-            wq.add_formula("'PPT context'!B8", [[f"={b8_ref}"]])
-            print(f"  Queued: B8 = formula ={b8_ref} ('{fix_data.get('b8_val', '')}').")
+            wq.add_formula(f"'PPT context'!B{row}", [[f"={b8_ref}"]])
+            print(f"  Queued: B{row} = formula ={b8_ref} ('{fix_data.get('b8_val', '')}').")
         else:
-            print("  Skipped B8: no Context cell reference found.")
+            print(f"  Skipped B{row}: no Context cell reference found.")
 
         if d8_ref:
-            wq.add_formula("'PPT context'!D8", [[f"={d8_ref}"]])
-            print(f"  Queued: D8 = formula ={d8_ref} ('{fix_data.get('d8_val', '')}').")
+            wq.add_formula(f"'PPT context'!D{row}", [[f"={d8_ref}"]])
+            print(f"  Queued: D{row} = formula ={d8_ref} ('{fix_data.get('d8_val', '')}').")
         else:
-            print("  Skipped D8: no Context cell reference found.")
+            print(f"  Skipped D{row}: no Context cell reference found.")
 
         if f8_ref:
-            wq.add_formula("'PPT context'!F8", [[f"={f8_ref}"]])
-            print(f"  Queued: F8 = formula ={f8_ref} ('{fix_data.get('f8_val', '')}').")
+            wq.add_formula(f"'PPT context'!F{row}", [[f"={f8_ref}"]])
+            print(f"  Queued: F{row} = formula ={f8_ref} ('{fix_data.get('f8_val', '')}').")
         else:
-            print("  Skipped F8: no L3 reference (expected for old tool or L2 choice).")
+            print(f"  Skipped F{row}: no L3 reference (expected for old tool or L2 choice).")
