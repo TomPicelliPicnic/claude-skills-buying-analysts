@@ -69,11 +69,16 @@ See `SKILL.md → Contributor Guide` (at the bottom) for the full reference incl
 cd ~/skills/nt-slides-check
 poetry run python audit.py <any_sheet_id>
 ```
+Run it against a real sheet and confirm the check behaves correctly — fix any issues before moving on.
 
-**3. Push — everyone gets it on their next run**
+**3. Ask before pushing**
+
+Only once the check is confirmed working locally, ask: "Should I push this to origin/main?"
+
+Push only after explicit confirmation:
 ```bash
-git add checks/check_21_my_name.py
-git commit -m "Add check 21: describe what it catches"
+git add checks/check_NN_my_name.py
+git commit -m "Add check NN: describe what it catches"
 git push
 ```
 
@@ -1237,16 +1242,16 @@ class MyNewCheck(CheckTemplate):
 
 4. **Register the fix ID** in `core/constants.py` (add `FIX_MY_NEW_CHECK = 21`). Never renumber existing IDs.
 
-5. **Test locally:**
+5. **Test locally** — run against a real sheet and confirm it works:
 ```bash
 cd ~/skills/nt-slides-check
 poetry run python audit.py <any_sheet_id>
 ```
 
-6. **Commit and push:**
+6. **Ask before pushing** — only after the check is confirmed working, ask the user: "Should I push this to origin/main?" Then commit and push on confirmation:
 ```bash
-git add checks/check_21_my_name.py core/constants.py
-git commit -m "Add check 21: my check description"
+git add checks/check_NN_my_name.py core/constants.py
+git commit -m "Add check NN: my check description"
 git push
 ```
 
