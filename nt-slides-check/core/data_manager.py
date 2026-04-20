@@ -16,7 +16,7 @@ class DataManager:
                 "'PPT time'!A1:JA20",
                 "'TSV output'",
                 "'Price list'",
-                "Context!1:82",
+                "Context!1:200",
                 "'Offer insights'",
                 "'PPT context'",
                 "'Deal sheet'",
