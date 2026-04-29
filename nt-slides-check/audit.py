@@ -6,7 +6,7 @@ Usage:
     poetry run python audit.py <SHEET_ID> [--fix '{"1": {...}, "6": {...}}']
     poetry run python audit.py <SHEET_ID>          # audit only
 """
-import sys, json, subprocess, pathlib
+import sys, json, subprocess, pathlib, threading
 
 REPO_DIR   = pathlib.Path(__file__).parent
 GSHEET_DIR = pathlib.Path.home() / ".claude/skills/picnic-gsheet"
@@ -135,10 +135,15 @@ def main():
         wq.dispatch(sh)
         return
 
-    _sync()
+    # Sync runs in parallel with open_by_key + DataManager — both are network-bound
+    # and fully independent. load_checks() runs after sync so new checks are picked up.
+    sync_thread = threading.Thread(target=_sync, daemon=True)
+    sync_thread.start()
 
     dm  = DataManager(sh)
     ctx = _build_context(sh, dm)
+
+    sync_thread.join()
 
     checks   = load_checks()
     findings = []
