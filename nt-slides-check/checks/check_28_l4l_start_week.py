@@ -4,6 +4,19 @@ from core.check_template import CheckTemplate, Finding, AuditContext
 from checks.check_26_offer_week_staleness import _weeks_apart
 
 
+def _find_l4l_week(context: list) -> Optional[int]:
+    """Find L4L start week dynamically: scan for 'Like for Like' anchor, return col B of next row."""
+    for ri, row in enumerate(context):
+        for val in row:
+            if "like for like" in val.strip().lower():
+                data_ri = ri + 1
+                if data_ri < len(context) and len(context[data_ri]) > 1:
+                    raw = context[data_ri][1].strip()
+                    if raw.isdigit() and len(raw) == 6:
+                        return int(raw)
+    return None
+
+
 def _get_tsv_col(tsv: list, col_name: str) -> Optional[str]:
     """Return the first data row value for a TSV column by header name."""
     if not tsv or len(tsv) < 2:
@@ -22,13 +35,11 @@ class L4LStartWeekCheck(CheckTemplate):
     severity   = "WARNING"
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
-        # L4L start week from Context B80
-        l4l_raw = dm.context[79][1].strip() if len(dm.context) > 79 and len(dm.context[79]) > 1 else ""
-        if not l4l_raw or not l4l_raw.isdigit() or len(l4l_raw) != 6:
+        # L4L start week — found dynamically below 'Like for Like' anchor in Context
+        l4l_week = _find_l4l_week(dm.context)
+        if l4l_week is None:
             ctx.ok_count += 1
             return None
-
-        l4l_week = int(l4l_raw)
 
         offer_raw = _get_tsv_col(dm.tsv, "Key_offer_week")
         deal_raw  = _get_tsv_col(dm.tsv, "Key_deal_week")
