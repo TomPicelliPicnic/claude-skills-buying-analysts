@@ -53,6 +53,7 @@ class LtmFixedDatesCheck(CheckTemplate):
     name       = "LTM Fixed dates in PPT context C5/D5"
     sheet_name = "PPT context"
     severity   = "ERROR"
+    handles_fix_id = FIX_LTM_FIXED_DATES
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         b5 = dm.ppt_ctx[4][1].strip() if len(dm.ppt_ctx) > 4 and len(dm.ppt_ctx[4]) > 1 else ""

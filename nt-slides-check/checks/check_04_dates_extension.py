@@ -13,6 +13,7 @@ class DatesExtensionCheck(CheckTemplate):
     name       = "PPT time full timeline to 202652"
     sheet_name = "PPT time"
     severity   = "ERROR"
+    handles_fix_id = FIX_EXTEND_DATES
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         week_row_ints = []

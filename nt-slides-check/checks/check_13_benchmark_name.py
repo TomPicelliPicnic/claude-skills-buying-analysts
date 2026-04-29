@@ -35,6 +35,7 @@ class BenchmarkNameCheck(CheckTemplate):
     name       = "PPT context benchmark label and name in A5/B5"
     sheet_name = "PPT context"
     severity   = "ERROR"
+    handles_fix_id = FIX_SET_B5_BENCHMARK
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         b5 = dm.ppt_ctx[4][1].strip() if len(dm.ppt_ctx) > 4 and len(dm.ppt_ctx[4]) > 1 else ""

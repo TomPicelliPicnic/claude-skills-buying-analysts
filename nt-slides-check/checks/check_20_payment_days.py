@@ -10,6 +10,7 @@ class PaymentDaysCheck(CheckTemplate):
     name       = "Deal sheet payment days"
     sheet_name = "Deal sheet"
     severity   = "ERROR"
+    handles_fix_id = FIX_SET_PAYMENT_DAYS
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         hdr4 = dm.deal_sheet[3] if len(dm.deal_sheet) > 3 else []

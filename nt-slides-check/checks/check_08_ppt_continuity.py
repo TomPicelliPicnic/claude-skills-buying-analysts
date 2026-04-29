@@ -9,6 +9,7 @@ class PptContinuityCheck(CheckTemplate):
     name       = "PPT time data continuity"
     sheet_name = "PPT time"
     severity   = "WARNING"
+    handles_fix_id = FIX_FILL_METRIC_GAPS
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         cur_col = ctx.cur_col

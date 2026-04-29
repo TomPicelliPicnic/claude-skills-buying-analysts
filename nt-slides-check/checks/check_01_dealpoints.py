@@ -11,6 +11,7 @@ class DealPointsCheck(CheckTemplate):
     name       = "Dealpoints"
     sheet_name = "PPT time"
     severity   = "WARNING"
+    handles_fix_id = FIX_CLEAR_DEALPOINTS
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         week_row      = ctx.week_row

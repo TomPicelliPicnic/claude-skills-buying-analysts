@@ -102,6 +102,7 @@ class L2L3CategoryCheck(CheckTemplate):
     name       = "L2/L3 category labels in PPT context (row above Brand)"
     sheet_name = "PPT context"
     severity   = "ERROR"
+    handles_fix_id = FIX_L2_L3_CATEGORY
     auto_fix         = True
     auto_fix_message = "Added brand margin development parameters for title automation"
 

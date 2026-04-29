@@ -54,6 +54,7 @@ class CheckTemplate(ABC):
     severity: str
     auto_fix: bool = False
     auto_fix_message: str = ""  # Human-readable message shown in AUTO-FIXED section
+    handles_fix_id: Optional[int] = None  # Fix ID this check's fix() handles; used to build dispatch map
 
     @abstractmethod
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:

@@ -10,6 +10,7 @@ class N3FutureCheck(CheckTemplate):
     name       = "N3 line extends past current week"
     sheet_name = "PPT time"
     severity   = "WARNING"
+    handles_fix_id = FIX_BLANK_N3_FUTURE
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         week_row   = ctx.week_row

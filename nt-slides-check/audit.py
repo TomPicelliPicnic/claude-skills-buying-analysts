@@ -124,10 +124,11 @@ def main():
         # Fast path: skip sync and checks — just load data and apply fixes
         dm     = DataManager(sh)
         checks = load_checks()
-        check_map = {c.id: c for c in checks}
+        # Map by handles_fix_id (the fix ID the check's fix() handles) — NOT by c.id
+        fix_map = {c.handles_fix_id: c for c in checks if c.handles_fix_id is not None}
         wq = WriteQueue()
         for fix_id_str, fix_args in fix_instructions.items():
-            check = check_map.get(int(fix_id_str))
+            check = fix_map.get(int(fix_id_str))
             if check:
                 check.fix(fix_args, wq, dm)
             else:
