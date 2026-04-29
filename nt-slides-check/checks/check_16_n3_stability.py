@@ -32,6 +32,9 @@ class N3StabilityCheck(CheckTemplate):
                 continue
             first_val = vals[0][1]
             change_col, change_val = next((c, v) for c, v in vals if v != first_val)
+            # 1-week MAXIFS delay: price change 1 week after dealpoint is expected — skip
+            if change_col == seg_start + 1:
+                continue
             dp_wk      = week_row[seg_start].strip()      if seg_start      < len(week_row) else "?"
             change_wk  = week_row[change_col].strip()     if change_col     < len(week_row) else "?"
             prev_wk    = week_row[change_col - 1].strip() if 0 < change_col - 1 < len(week_row) else "?"
