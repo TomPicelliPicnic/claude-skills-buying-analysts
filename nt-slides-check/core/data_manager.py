@@ -20,6 +20,7 @@ class DataManager:
                 "'Offer insights'",
                 "'PPT context'",
                 "'Deal sheet'",
+                "'Article shelf'!C:C",  # Week column only — for offer-week staleness check
             ],
             params={"valueRenderOption": "FORMATTED_VALUE"},
         )
@@ -28,14 +29,15 @@ class DataManager:
         def _g(i):
             return _vr[i].get("values", []) if i < len(_vr) else []
 
-        self.shelf_rows     = _g(0)
-        self.ppt_time       = _g(1)
-        self.tsv            = _g(2)
-        self.price_list     = _g(3)
-        self.context        = _g(4)
-        self.offer_insights = _g(5)
-        self.ppt_ctx        = _g(6)
-        self.deal_sheet     = _g(7)
+        self.shelf_rows          = _g(0)
+        self.ppt_time            = _g(1)
+        self.tsv                 = _g(2)
+        self.price_list          = _g(3)
+        self.context             = _g(4)
+        self.offer_insights      = _g(5)
+        self.ppt_ctx             = _g(6)
+        self.deal_sheet          = _g(7)
+        self.article_shelf_weeks = _g(8)  # [[week], [week], ...] from Article shelf col C
 
         # Call 2: FORMULA render for PPT time — scoped identically.
         # Cannot be combined with call 1 (different valueRenderOption).

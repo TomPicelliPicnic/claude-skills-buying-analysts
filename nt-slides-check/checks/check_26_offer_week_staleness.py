@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 from typing import Optional
 
@@ -15,26 +14,24 @@ def _weeks_apart(older: int, newer: int) -> int:
     return (_yyyyww_to_date(newer) - _yyyyww_to_date(older)).days // 7
 
 
-def _find_max_shelf_week(shelf_rows: list) -> Optional[int]:
-    """Return the highest valid ISO week number (YYYYWW) found in Shelf analysis rows."""
+def _max_article_shelf_week(article_shelf_weeks: list) -> Optional[int]:
+    """Return the highest valid ISO week number (YYYYWW) from Article shelf col C."""
     max_week = None
-    for row in shelf_rows:
-        for val in row:
-            v = val.strip()
-            if re.fullmatch(r'20[2-9]\d{3}', v):
-                try:
-                    ww = int(v)
-                    if 1 <= ww % 100 <= 53:
-                        if max_week is None or ww > max_week:
-                            max_week = ww
-                except ValueError:
-                    pass
+    for row in article_shelf_weeks:
+        if not row:
+            continue
+        v = row[0].strip()
+        if len(v) == 6 and v.isdigit():
+            ww = int(v)
+            if 1 <= ww % 100 <= 53:
+                if max_week is None or ww > max_week:
+                    max_week = ww
     return max_week
 
 
 class OfferWeekStalenessCheck(CheckTemplate):
     id         = 26
-    name       = "Offer week not stale vs Shelf analysis"
+    name       = "Offer week not stale vs Article shelf"
     sheet_name = "TSV output"
     severity   = "WARNING"
 
@@ -57,7 +54,7 @@ class OfferWeekStalenessCheck(CheckTemplate):
             ctx.ok_count += 1
             return None
 
-        max_shelf_week = _find_max_shelf_week(dm.shelf_rows)
+        max_shelf_week = _max_article_shelf_week(dm.article_shelf_weeks)
         if max_shelf_week is None:
             ctx.ok_count += 1
             return None
@@ -69,7 +66,6 @@ class OfferWeekStalenessCheck(CheckTemplate):
 
         return Finding(
             "WARNING", "TSV output",
-            f"Offer week {offer_week} is {lag} weeks behind the latest week in "
-            f"Shelf analysis ({max_shelf_week}). The TSV may be based on an outdated "
-            f"export — re-run the tool to update.",
+            f"Offer week {offer_week} is {lag} week(s) behind the latest week in "
+            f"Article shelf ({max_shelf_week}). Re-run the tool to update the TSV export.",
         )
