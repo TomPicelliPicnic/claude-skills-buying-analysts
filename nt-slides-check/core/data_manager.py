@@ -21,6 +21,7 @@ class DataManager:
                 "'PPT context'",
                 "'Deal sheet'",
                 "'Article shelf'!C:C",  # Week column only — for offer-week staleness check
+                "'AH-Promo'!A:Z",       # CU GTIN + Price match columns — for promo plan check
             ],
             params={"valueRenderOption": "FORMATTED_VALUE"},
         )
@@ -38,6 +39,7 @@ class DataManager:
         self.ppt_ctx             = _g(6)
         self.deal_sheet          = _g(7)
         self.article_shelf_weeks = _g(8)  # [[week], [week], ...] from Article shelf col C
+        self.ah_promo            = _g(9)  # AH-Promo rows A:Z — for promo plan check
 
         # Call 2: FORMULA render for PPT time — scoped identically.
         # Cannot be combined with call 1 (different valueRenderOption).
