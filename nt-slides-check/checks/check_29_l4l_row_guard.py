@@ -41,11 +41,13 @@ def _col_letter(col_0idx: int) -> str:
 
 
 class L4LRowGuardCheck(CheckTemplate):
-    id             = 29
-    name           = "PPT time L4L rows blank before L4L start week"
-    sheet_name     = "PPT time"
-    severity       = "WARNING"
-    handles_fix_id = FIX_L4L_ROW_GUARD
+    id               = 29
+    name             = "PPT time L4L rows blank before L4L start week"
+    sheet_name       = "PPT time"
+    severity         = "ERROR"
+    auto_fix         = True
+    auto_fix_message = "Added IF/IFERROR guards to Net 3 - L4L, NLP - L4L and Margin L4L rows"
+    handles_fix_id   = FIX_L4L_ROW_GUARD
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         l4l_week, _ = _find_l4l_week_and_ref(dm.context)
