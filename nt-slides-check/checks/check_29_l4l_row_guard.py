@@ -7,6 +7,11 @@ FIX_L4L_ROW_GUARD = 10
 # PPT time rows (0-indexed) that must be blank before the L4L start week
 _L4L_ROWS = {6: "Net 3 - L4L", 7: "NLP - L4L"}
 
+# PPT time rows (0-indexed) that depend on L4L rows and need IFERROR wrapping
+_IFERROR_ROWS = {8: "Margin L4L"}
+
+_ERROR_MARKERS = {"#div/0!", "#value!", "#ref!", "#n/a", "#name?", "#num!", "#null!"}
+
 
 def _find_l4l_week_and_ref(context: list):
     """Return (week_int, cell_ref) from the row below 'Like for Like' in Context.
@@ -73,14 +78,35 @@ class L4LRowGuardCheck(CheckTemplate):
             if pre_vals:
                 problem_rows.append(f"{row_label} ({len(pre_vals)} week(s))")
 
-        if not problem_rows:
+        # Also check IFERROR rows for error values
+        error_rows = []
+        for row_idx, row_label in _IFERROR_ROWS.items():
+            row_data = dm.ppt_time[row_idx] if len(dm.ppt_time) > row_idx else []
+            err_count = sum(
+                1 for c in range(1, len(row_data))
+                if row_data[c].strip().lower() in _ERROR_MARKERS
+            )
+            if err_count:
+                error_rows.append(f"{row_label} ({err_count} error(s))")
+
+        if not problem_rows and not error_rows:
             ctx.ok_count += 1
             return None
 
+        parts = []
+        if problem_rows:
+            parts.append(
+                f"Data found before L4L start week {l4l_week} in: {', '.join(problem_rows)}."
+            )
+        if error_rows:
+            parts.append(
+                f"Formula errors in: {', '.join(error_rows)} — likely caused by L4L guard returning empty string."
+            )
+        parts.append("Fix will wrap formula cells with IF / IFERROR guards.")
+
         return Finding(
             "WARNING", "PPT time",
-            f"Data found before L4L start week {l4l_week} in: {', '.join(problem_rows)}. "
-            "Fix will add IF condition to formula cells to suppress pre-L4L values.",
+            " ".join(parts),
             fix_id=FIX_L4L_ROW_GUARD,
             fix_data={},
         )
@@ -117,3 +143,26 @@ class L4LRowGuardCheck(CheckTemplate):
                 for u in updates:
                     wq.add_formula(u["range"], u["values"])
                 print(f"  Queued {len(updates)} formula update(s) for {row_label}.")
+
+        for row_idx, row_label in _IFERROR_ROWS.items():
+            formulas = dm.ppt_formulas[row_idx] if len(dm.ppt_formulas) > row_idx else []
+            updates = []
+            for col_idx, cell_formula in enumerate(formulas):
+                if col_idx == 0:
+                    continue
+                f = str(cell_formula).strip()
+                if not f.startswith("="):
+                    continue
+                # Skip if already wrapped with IFERROR
+                if f.upper().startswith("=IFERROR("):
+                    continue
+                col_letter = _col_letter(col_idx)
+                wrapped = f"=IFERROR({f[1:]},\"\")"
+                sheet_row = row_idx + 1
+                a1 = f"'PPT time'!{col_letter}{sheet_row}"
+                updates.append({"range": a1, "values": [[wrapped]]})
+
+            if updates:
+                for u in updates:
+                    wq.add_formula(u["range"], u["values"])
+                print(f"  Queued {len(updates)} IFERROR wrap(s) for {row_label}.")
