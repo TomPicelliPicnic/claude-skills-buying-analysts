@@ -946,18 +946,20 @@ The report groups findings by severity. Each finding includes `[Tab: X]` to show
 
 After showing the report, if there are any findings, immediately list them as a concise "To fix" summary — one line per issue, using the same `[Tab: X]` prefix.
 
+**Ordering:** Auto-fixable items first, sorted by fix_id ascending (Fix 1 before Fix 3 before Fix 6). Manual-only items at the end. Number them sequentially 1, 2, 3… and show the Fix label on each auto-fixable item.
+
 Example format:
 ```
 To fix:
-[Tab: PPT context] B5 benchmark name — set to '2025' (from Offer insights E6)? (Fix 5)
-[Tab: Deal sheet] Payment days empty — how many days? (Fix 6)
-[Tab: PPT time] Dealpoints: 202344 (20%), 202418 (25%) — clear them? (Fix 1)
-[Tab: TSV output] Benchmark count mismatch (6 vs 8) — fix manually
+1. [Fix 1] [Tab: PPT time] Dealpoints: 202344 (20%), 202418 (25%) — clear them?
+2. [Fix 5] [Tab: PPT context] B5 benchmark name — set to '2025' (from Offer insights E6)?
+3. [Fix 6] [Tab: Deal sheet] Payment days empty — how many days?
+4. [Tab: TSV output] Benchmark count mismatch (6 vs 8) — fix manually
 ```
 
 For dealpoints, always include the % of SKUs with a price change at each week.
 
-The user replies with answers mapped to Fix IDs (e.g. "Fix 1 yes / Fix 5 2025 / Fix 6 30").
+The user replies with answers mapped to the sequential numbers (e.g. "1. yes / 2. 2025 / 3. 30").
 - Items without a fix_id must be fixed manually; user will say skip or not address them
 - After receiving the reply, collect ALL fix operations and dispatch in the minimum number of API calls (see Batch Dispatch below)
 
