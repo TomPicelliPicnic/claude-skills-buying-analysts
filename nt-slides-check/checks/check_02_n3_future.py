@@ -1,62 +1,83 @@
 from typing import Optional
-import gspread.utils
 
 from core.check_template import CheckTemplate, Finding, AuditContext
-from core.constants import FIX_BLANK_N3_FUTURE
+
+_GUARD = "<=MAX('Article shelf'!C:C)"
+
+
+def _col_letter(col_0idx: int) -> str:
+    result = ""
+    n = col_0idx + 1
+    while n > 0:
+        n, rem = divmod(n - 1, 26)
+        result = chr(65 + rem) + result
+    return result
+
+
+def _extract_if_true_branch(f: str) -> str:
+    """Extract the true branch of =IF(cond, TRUE_BRANCH, false) by counting parens."""
+    try:
+        start = f.index("(")
+    except ValueError:
+        return f[1:]
+    depth = 0
+    splits = []
+    for i, c in enumerate(f[start + 1:], start + 1):
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            if depth == 0:
+                break
+            depth -= 1
+        elif c == "," and depth == 0:
+            splits.append(i)
+    if len(splits) >= 2:
+        return f[splits[0] + 1 : splits[1]]
+    return f[1:]
 
 
 class N3FutureCheck(CheckTemplate):
-    id         = 2
-    name       = "N3 line extends past current week"
-    sheet_name = "PPT time"
-    severity   = "WARNING"
-    handles_fix_id = FIX_BLANK_N3_FUTURE
+    id               = 2
+    name             = "PPT time rows 4+ capped at Article shelf max week"
+    sheet_name       = "PPT time"
+    severity         = "ERROR"
+    auto_fix         = True
+    auto_fix_message = "Added Article shelf week cap to PPT time rows 4+"
+
+    def _unwrapped(self, dm):
+        result = []
+        for row_idx in range(3, len(dm.ppt_formulas)):
+            for col_idx, cell_formula in enumerate(dm.ppt_formulas[row_idx]):
+                if col_idx == 0:
+                    continue
+                f = str(cell_formula).strip()
+                if not f.startswith("="):
+                    continue
+                if _GUARD in f:
+                    continue
+                # Cells guarded by the L4L check (check 29) — skip to avoid conflict
+                if ">=Context!" in f or f.upper().startswith("=IFERROR("):
+                    continue
+                col_letter = _col_letter(col_idx)
+                a1 = f"'PPT time'!{col_letter}{row_idx + 1}"
+                # Extract inner formula when re-wrapping an existing IF guard
+                inner = _extract_if_true_branch(f) if f.upper().startswith("=IF(") else f[1:]
+                result.append((inner, a1, col_letter))
+        return result
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
-        week_row   = ctx.week_row
-        n3_all_row = dm.ppt_time[3] if len(dm.ppt_time) > 3 else []
-        n3_l4l_row = dm.ppt_time[6] if len(dm.ppt_time) > 6 else []
-
-        # Effective cutoff: max of current_keyweek and NLP L4L last data week
-        nlp_l4l = dm.ppt_time[7] if len(dm.ppt_time) > 7 else []
-        nlp_last = ctx.current_keyweek
-        for i, v in enumerate(nlp_l4l):
-            if v.strip() and i < len(week_row):
-                try:
-                    nlp_last = max(nlp_last, int(week_row[i]))
-                except ValueError:
-                    pass
-        cutoff = nlp_last
-
-        future_cols = []
-        last_n3_week = None
-        for col_i, wk in enumerate(week_row[1:], start=1):
-            if not wk:
-                continue
-            try:
-                wk_int = int(wk)
-            except ValueError:
-                continue
-            val_all = n3_all_row[col_i] if col_i < len(n3_all_row) else ""
-            val_l4l = n3_l4l_row[col_i] if col_i < len(n3_l4l_row) else ""
-            if val_all or val_l4l:
-                last_n3_week = wk_int
-                if wk_int > cutoff:
-                    future_cols.append(col_i)
-
-        if not future_cols:
+        cells = self._unwrapped(dm)
+        if not cells:
             ctx.ok_count += 1
             return None
-        return Finding("WARNING", "PPT time",
-            f"Net 3 extends {len(future_cols)} week(s) past current week "
-            f"(last N3 week: {last_n3_week}, current week: {ctx.current_keyweek}). "
-            "The chart line will run into the future.",
-            fix_id=FIX_BLANK_N3_FUTURE,
-            fix_data={"fix": "blank_n3_future", "cols": future_cols})
+        return Finding("ERROR", "PPT time",
+            f"{len(cells)} formula cell(s) in rows 4+ are not capped at the Article shelf max week.",
+            fix_data={})
 
     def fix(self, fix_data: dict, wq, dm) -> None:
-        cols = fix_data.get("cols", [])
-        for col_i in cols:
-            wq.add_value(f"'PPT time'!{gspread.utils.rowcol_to_a1(4, col_i + 1)}", [[""]])
-            wq.add_value(f"'PPT time'!{gspread.utils.rowcol_to_a1(7, col_i + 1)}", [[""]])
-        print(f"  Queued: blank N3 for {len(cols)} week(s) after current week.")
+        cells = self._unwrapped(dm)
+        for inner, a1, col_letter in cells:
+            wrapped = f"=IF({col_letter}$1{_GUARD},{inner},\"\")"
+            wq.add_formula(a1, [[wrapped]])
+        if cells:
+            print(f"  Queued: Article shelf week cap for {len(cells)} formula cell(s) in PPT time rows 4+.")

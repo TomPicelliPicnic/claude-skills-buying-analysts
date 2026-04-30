@@ -13,6 +13,28 @@ _IFERROR_ROWS = {8: "Margin L4L"}
 _ERROR_MARKERS = {"#div/0!", "#value!", "#ref!", "#n/a", "#name?", "#num!", "#null!"}
 
 
+def _extract_if_true_branch(f: str) -> str:
+    """Extract the true branch of =IF(cond, TRUE_BRANCH, false) by counting parens."""
+    try:
+        start = f.index("(")
+    except ValueError:
+        return f[1:]
+    depth = 0
+    splits = []
+    for i, c in enumerate(f[start + 1:], start + 1):
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            if depth == 0:
+                break
+            depth -= 1
+        elif c == "," and depth == 0:
+            splits.append(i)
+    if len(splits) >= 2:
+        return f[splits[0] + 1 : splits[1]]
+    return f[1:]
+
+
 def _find_l4l_week_and_ref(context: list):
     """Return (week_int, cell_ref) from the row below 'Like for Like' in Context.
 
@@ -46,7 +68,7 @@ class L4LRowGuardCheck(CheckTemplate):
     sheet_name       = "PPT time"
     severity         = "ERROR"
     auto_fix         = True
-    auto_fix_message = "Added IF/IFERROR guards to Net 3 - L4L, NLP - L4L and Margin L4L rows"
+    auto_fix_message = "Added AND(>=L4L week, <=Article shelf max) guard to L4L rows"
     handles_fix_id   = FIX_L4L_ROW_GUARD
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
@@ -91,7 +113,20 @@ class L4LRowGuardCheck(CheckTemplate):
             if err_count:
                 error_rows.append(f"{row_label} ({err_count} error(s))")
 
-        if not problem_rows and not error_rows:
+        # Detect cells with the old single-condition guard (missing Article shelf cap)
+        incomplete_guard_rows = []
+        for row_idx, row_label in _L4L_ROWS.items():
+            formulas = dm.ppt_formulas[row_idx] if len(dm.ppt_formulas) > row_idx else []
+            count = sum(
+                1 for col_idx, cf in enumerate(formulas)
+                if col_idx > 0
+                and ">=Context!" in str(cf)
+                and "'Article shelf'!C:C" not in str(cf)
+            )
+            if count:
+                incomplete_guard_rows.append(f"{row_label} ({count} cell(s))")
+
+        if not problem_rows and not error_rows and not incomplete_guard_rows:
             ctx.ok_count += 1
             return None
 
@@ -104,7 +139,11 @@ class L4LRowGuardCheck(CheckTemplate):
             parts.append(
                 f"Formula errors in: {', '.join(error_rows)} — likely caused by L4L guard returning empty string."
             )
-        parts.append("Fix will wrap formula cells with IF / IFERROR guards.")
+        if incomplete_guard_rows:
+            parts.append(
+                f"Incomplete guard (missing Article shelf cap) in: {', '.join(incomplete_guard_rows)}."
+            )
+        parts.append("Fix will wrap formula cells with AND(>=L4L week, <=Article shelf max) guard.")
 
         return Finding(
             "WARNING", "PPT time",
@@ -128,13 +167,16 @@ class L4LRowGuardCheck(CheckTemplate):
                 f = str(cell_formula).strip()
                 if not f.startswith("="):
                     continue  # empty or plain value — leave alone
-                # Skip if already wrapped with this guard
-                if ">=Context!" in f:
+                # Skip if already has the complete AND guard with Article shelf cap
+                if ">=Context!" in f and "'Article shelf'!C:C" in f:
                     continue
                 col_letter = _col_letter(col_idx)
+                # Extract inner formula, unwrapping any existing IF guard
+                inner = _extract_if_true_branch(f) if f.upper().startswith("=IF(") else f[1:]
                 wrapped = (
-                    f"=IF({col_letter}$1>=Context!{l4l_cell_ref},"
-                    f"{f[1:]},"  # strip leading "="
+                    f"=IF(AND({col_letter}$1>=Context!{l4l_cell_ref},"
+                    f"{col_letter}$1<=MAX('Article shelf'!C:C)),"
+                    f"{inner},"
                     f'"")'
                 )
                 sheet_row = row_idx + 1  # 1-indexed

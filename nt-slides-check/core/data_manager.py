@@ -15,7 +15,7 @@ class DataManager:
         _formula_box = [None]
 
         def _fetch_formulas():
-            _formula_box[0] = self.ws_ppt.get("A1:JA20", value_render_option="FORMULA")
+            _formula_box[0] = self.ws_ppt.get("A1:JA60", value_render_option="FORMULA")
 
         formula_thread = threading.Thread(target=_fetch_formulas, daemon=True)
         formula_thread.start()
@@ -23,7 +23,7 @@ class DataManager:
         _batch = self.sh.values_batch_get(
             ranges=[
                 "'Shelf analysis'!1:8",
-                "'PPT time'!A1:JA20",
+                "'PPT time'!A1:JA60",
                 "'TSV output'",
                 "'Price list'",
                 "Context!1:200",

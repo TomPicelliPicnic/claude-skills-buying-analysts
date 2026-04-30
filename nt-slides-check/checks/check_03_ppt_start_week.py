@@ -15,8 +15,8 @@ class PptStartWeekCheck(CheckTemplate):
     handles_fix_id   = FIX_PPT_START_WEEK
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
-        b1_val     = dm.ppt_time[0][1].strip()    if len(dm.ppt_time)    > 0 and len(dm.ppt_time[0])    > 1 else ""
-        b1_formula = dm.ppt_formulas[0][1].strip() if len(dm.ppt_formulas) > 0 and len(dm.ppt_formulas[0]) > 1 else ""
+        b1_val     = dm.ppt_time[0][1].strip()         if len(dm.ppt_time)    > 0 and len(dm.ppt_time[0])    > 1 else ""
+        b1_formula = str(dm.ppt_formulas[0][1]).strip() if len(dm.ppt_formulas) > 0 and len(dm.ppt_formulas[0]) > 1 else ""
         # Flag if value is wrong OR if value looks right but is stored as text (formula starts with ')
         if b1_val != "202201" or b1_formula.startswith("'"):
             display = f"'{b1_val}" if b1_formula.startswith("'") else b1_val
