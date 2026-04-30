@@ -9,7 +9,9 @@ class BenchmarkCountCheck(CheckTemplate):
     name       = "Benchmark article count consistency"
     sheet_name = "TSV output"
     severity   = "WARNING"
-    handles_fix_id = FIX_BENCHMARK_TSV
+    handles_fix_id  = FIX_BENCHMARK_TSV
+    auto_fix        = True
+    auto_fix_message = "Reset TSV columns I/J (Shelf analysis spill) and P/R/V formulas"
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         tsv_header = dm.tsv[0] if dm.tsv else []
