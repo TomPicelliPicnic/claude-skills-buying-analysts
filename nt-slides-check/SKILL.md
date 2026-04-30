@@ -71,18 +71,18 @@ poetry run python audit.py <any_sheet_id>
 ```
 Run it against a real sheet and confirm the check behaves correctly — fix any issues before moving on.
 
-**3. Ask before pushing**
+**3. Ask before pushing — this is mandatory for everyone**
 
-Only once the check is confirmed working locally, ask: "Should I push this to origin/main?"
+Only once the check is confirmed working locally, ask the user: "Looks good — should I push this to origin/main?"
 
-Push only after explicit confirmation:
+**Never push without explicit confirmation from the user.** This applies to Claude and human contributors alike. Because `audit.py` runs `git pull --ff-only` at startup, a push is an immediate deploy to every colleague — a broken check affects the whole team instantly.
+
+Push only after receiving explicit confirmation:
 ```bash
 git add checks/check_NN_my_name.py
 git commit -m "Add check NN: describe what it catches"
 git push
 ```
-
-Because `audit.py` runs `git pull --ff-only` at startup, every colleague's next invocation will include your new check automatically — no setup required on their end.
 
 ---
 
@@ -1248,14 +1248,12 @@ cd ~/skills/nt-slides-check
 poetry run python audit.py <any_sheet_id>
 ```
 
-6. **Ask before pushing** — only after the check is confirmed working, ask the user: "Should I push this to origin/main?" Then commit and push on confirmation:
+6. **Ask before pushing — mandatory for everyone.** Only after the check is confirmed working locally, ask the user: "Looks good — should I push this to origin/main?" Never push without explicit user confirmation. A push is an immediate deploy to every colleague (via the `git pull` at startup), so a broken check affects the whole team instantly. Commit and push only on confirmation:
 ```bash
 git add checks/check_NN_my_name.py core/constants.py
 git commit -m "Add check NN: my check description"
 git push
 ```
-
-All teammates will get the new check automatically on their next run (the `git pull` sync at startup).
 
 ### Key constraints
 
