@@ -32,6 +32,7 @@ class DataManager:
                 "'Deal sheet'",
                 "'Article shelf'!C:C",  # Week column only — for offer-week staleness check
                 "'AH-Promo'!A:Z",       # CU GTIN + Price match columns — for promo plan check
+                "'Assortment'!A:F",     # Article ID (col B) + Article name (col E) — for name length check
             ],
             params={"valueRenderOption": "FORMATTED_VALUE"},
         )
@@ -54,3 +55,4 @@ class DataManager:
         self.deal_sheet          = _g(7)
         self.article_shelf_weeks = _g(8)  # [[week], [week], ...] from Article shelf col C
         self.ah_promo            = _g(9)  # AH-Promo rows A:Z — for promo plan check
+        self.assortment          = _g(10) # Assortment A:F — article ID (col B) + name (col E)

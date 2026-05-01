@@ -11,7 +11,7 @@ class BenchmarkCountCheck(CheckTemplate):
     severity   = "WARNING"
     handles_fix_id  = FIX_BENCHMARK_TSV
     auto_fix        = True
-    auto_fix_message = "Reset TSV columns I/J (Shelf analysis spill) and P/R/V formulas"
+    auto_fix_message = "Reset TSV P/R/V formulas (I/J spill only if Article ID column was empty)"
 
     def run(self, dm, ctx: AuditContext) -> Optional[Finding]:
         tsv_header = dm.tsv[0] if dm.tsv else []
@@ -72,11 +72,20 @@ class BenchmarkCountCheck(CheckTemplate):
             print(f"  ERROR: {e} — skipping fix.")
             return
 
-        # Clear spill target columns so the array formula finds empty cells
-        wq.add_clear(f"'TSV output'!{c_article}2:{c_gtin}{last_row + 5}")
+        # Only write the Shelf analysis spill formula if Article ID column is empty.
+        # If it already has values, a custom formula (e.g. =FILTER(...)) is in place — leave it.
+        c_article_idx = next(i for i, h in enumerate(headers) if h.strip() == "Article ID")
+        article_id_populated = any(
+            len(row) > c_article_idx and row[c_article_idx].strip()
+            for row in dm.tsv[1:] if any(row)
+        )
 
-        # Spill formula: fills c_article (Article ID) and c_gtin (CU_GTIN) from Shelf analysis
-        wq.add_formula(f"'TSV output'!{c_article}2", [["={'Shelf analysis'!B8:C}"]])
+        if article_id_populated:
+            print(f"  Skipped I/J spill: Article ID column already populated (custom formula preserved).")
+        else:
+            wq.add_clear(f"'TSV output'!{c_article}2:{c_gtin}{last_row + 5}")
+            wq.add_formula(f"'TSV output'!{c_article}2", [["={'Shelf analysis'!B8:C}"]])
+            print(f"  Queued: clear {c_article}:{c_gtin} + spill formula.")
 
         # Lookup formulas for net price columns — match on CU_GTIN × Offer_ID
         def _lookup(stacked_col, row):
@@ -92,7 +101,4 @@ class BenchmarkCountCheck(CheckTemplate):
         wq.add_formula(f"'TSV output'!{c_net3}2:{c_net3}{last_row}",  [[_lookup("G", r)] for r in rows])
         wq.add_formula(f"'TSV output'!{c_net3le}2:{c_net3le}{last_row}", [[_lookup("H", r)] for r in rows])
 
-        print(
-            f"  Queued: clear {c_article}:{c_gtin} + spill formula + "
-            f"update {c_net1}/{c_net3}/{c_net3le} for {n_rows} rows."
-        )
+        print(f"  Queued: update {c_net1}/{c_net3}/{c_net3le} for {n_rows} rows.")
