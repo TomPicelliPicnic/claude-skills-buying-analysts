@@ -4,7 +4,7 @@ from typing import Optional, List, Tuple
 from core.check_template import CheckTemplate, Finding, AuditContext
 from core.constants import FIX_ARTICLE_NAME_LENGTH
 
-MAX_LEN_EXISTING = 50  # first 'Article name' block — existing articles
+MAX_LEN_EXISTING = 47  # first 'Article name' block — existing articles
 MAX_LEN_NEW      = 43  # second 'Article name' block — new listings
 
 
